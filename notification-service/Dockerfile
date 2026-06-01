@@ -24,8 +24,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 
-# Create logs directory
-RUN mkdir -p logs && chown -R appuser:appgroup /app
+# Writable dirs for logs and SQLite
+RUN mkdir -p logs data && chown -R appuser:appgroup /app
 
 USER appuser
 

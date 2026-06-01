@@ -65,8 +65,6 @@ export interface BatchNotificationResult {
   jobIds: string[];
 }
 
-// ── Audit record (stored in Postgres) ────────────────────────────────────
-
 export interface NotificationAuditRecord {
   id: string;
   channel: NotificationChannel;

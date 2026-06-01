@@ -16,10 +16,7 @@ npm install
 # 2. Copy env file and fill in your values
 cp .env.example .env
 
-# 3. Start Redis + Postgres (Docker required)
-docker-compose up redis postgres -d
-
-# 4. Run in dev mode (hot reload)
+# 3. Run in dev mode (hot reload)
 npm run dev
 ```
 
@@ -123,7 +120,7 @@ public class NotificationClient(HttpClient http)
 4. Add `SmsNotification` interface and add to `NotificationPayload` union
 5. Add `TWILIO_*` vars to `env.ts` schema and `.env`
 6. Uncomment `SmsSchema` in `validate.middleware.ts`
-7. Uncomment `case 'sms'` in `notification.queue.ts`
+7. Uncomment `case 'sms'` in `notification.processor.ts`
 8. Done — no other files need to change
 
 ---

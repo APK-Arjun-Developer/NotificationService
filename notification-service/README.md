@@ -16,10 +16,7 @@ npm install
 # 2. Copy env file and fill in your values
 cp .env.example .env
 
-# 3. Start Redis + Postgres (Docker required)
-docker-compose up redis postgres -d
-
-# 4. Run in dev mode (hot reload)
+# 3. Run in dev mode (hot reload)
 npm run dev
 ```
 

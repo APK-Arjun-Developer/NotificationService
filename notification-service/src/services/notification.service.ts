@@ -1,4 +1,4 @@
-import { notificationQueue } from '../queue/notification.queue';
+import { getNotificationQueue } from '../queue';
 import {
   NotificationPayload,
   NotificationResult,
@@ -37,10 +37,9 @@ export class NotificationService {
   async send(payload: NotificationPayload): Promise<NotificationResult> {
     const priority = PRIORITY_VALUE[payload.priority ?? 'normal'];
 
-    const job = await notificationQueue.add(payload.channel, payload, { priority });
+    const job = await getNotificationQueue().add(payload.channel, payload, { priority });
 
-    // Create audit record
-    await createLog({
+    createLog({
       jobId: job.id,
       channel: payload.channel,
       recipient: getRecipient(payload),
@@ -75,7 +74,7 @@ export class NotificationService {
       throw new Error('Batch size limit is 1000 per request');
     }
 
-    const jobs = await notificationQueue.addBulk(
+    const jobs = await getNotificationQueue().addBulk(
       payloads.map((p) => ({
         name: p.channel,
         data: p,
@@ -85,18 +84,15 @@ export class NotificationService {
 
     const jobIds = jobs.map((j) => j.id!);
 
-    // Audit log for each
-    await Promise.allSettled(
-      payloads.map((p, i) =>
-        createLog({
-          jobId: jobIds[i],
-          channel: p.channel,
-          recipient: getRecipient(p),
-          subject: getSubject(p),
-          metadata: p.metadata,
-        })
-      )
-    );
+    for (let i = 0; i < payloads.length; i++) {
+      createLog({
+        jobId: jobIds[i],
+        channel: payloads[i].channel,
+        recipient: getRecipient(payloads[i]),
+        subject: getSubject(payloads[i]),
+        metadata: payloads[i].metadata,
+      });
+    }
 
     logger.info('Batch notifications queued', {
       total: payloads.length,
@@ -110,12 +106,13 @@ export class NotificationService {
    * Get queue health stats.
    */
   async getStats() {
+    const queue = getNotificationQueue();
     const [waiting, active, completed, failed, delayed] = await Promise.all([
-      notificationQueue.getWaitingCount(),
-      notificationQueue.getActiveCount(),
-      notificationQueue.getCompletedCount(),
-      notificationQueue.getFailedCount(),
-      notificationQueue.getDelayedCount(),
+      queue.getWaitingCount(),
+      queue.getActiveCount(),
+      queue.getCompletedCount(),
+      queue.getFailedCount(),
+      queue.getDelayedCount(),
     ]);
     return { waiting, active, completed, failed, delayed };
   }

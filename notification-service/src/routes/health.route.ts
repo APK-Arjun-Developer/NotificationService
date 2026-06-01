@@ -1,20 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { notificationService } from '../services/notification.service';
-import { pool } from '../db';
+import { checkDbHealth } from '../db';
 import { env } from '../config/env';
 
 const router = Router();
 
-// Public health check — no auth required
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const [queueStats, dbResult] = await Promise.allSettled([
-      notificationService.getStats(),
-      pool.query('SELECT 1'),
-    ]);
+    const [queueStats] = await Promise.allSettled([notificationService.getStats()]);
 
     const queue = queueStats.status === 'fulfilled' ? queueStats.value : null;
-    const db = dbResult.status === 'fulfilled' ? 'ok' : 'error';
+    const db = checkDbHealth() ? 'ok' : 'error';
 
     res.json({
       status: 'ok',
@@ -22,6 +18,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       uptime: Math.floor(process.uptime()),
       queue,
       db,
+      dbPath: env.SQLITE_PATH,
       channels: {
         email: 'active',
         sms: 'not_implemented',
