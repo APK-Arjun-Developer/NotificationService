@@ -1,0 +1,44 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "description": "Production-ready notification microservice — email now, push/SMS/WhatsApp ready",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --forceExit"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.9",
+    "bullmq": "^5.4.2",
+    "ioredis": "^5.3.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "zod": "^3.22.4",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "dotenv": "^16.4.1",
+    "uuid": "^9.0.1",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.5",
+    "@types/nodemailer": "^6.4.14",
+    "@types/pg": "^8.11.0",
+    "@types/uuid": "^9.0.7",
+    "@types/jest": "^29.5.11",
+    "typescript": "^5.3.3",
+    "ts-node-dev": "^2.0.0",
+    "ts-jest": "^29.1.2",
+    "jest": "^29.7.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0"
+  }
+}
