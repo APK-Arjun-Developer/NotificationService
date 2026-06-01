@@ -138,8 +138,6 @@ public class NotificationClient(HttpClient http)
 
 ---
 
-## Production deploy (Docker)
+## Production deploy (GitHub Actions)
 
-```bash
-docker-compose up -d
-```
+Pushes to **`main`** auto-deploy via SSH + PM2. See **[../docs/DEPLOY.md](../docs/DEPLOY.md)** for secrets and server setup.

@@ -3,7 +3,10 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 const projectRoot = path.resolve(__dirname, '../..');
-dotenv.config({ path: path.join(projectRoot, '.env') });
+const envFile =
+  process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+
+dotenv.config({ path: path.join(projectRoot, envFile) });
 
 const EnvSchema = z.object({
   PORT: z
@@ -40,7 +43,9 @@ if (!_parsed.success) {
   Object.entries(errors).forEach(([field, messages]) => {
     console.error(`   ${field}: ${messages?.join(', ')}`);
   });
-  console.error('\n   Copy .env.example to .env and fill in the values.\n');
+  console.error(
+    '\n   Copy .env.example to .env (dev) or configure GitHub Secrets for .env.production (prod).\n'
+  );
   process.exit(1);
 }
 

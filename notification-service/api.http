@@ -1,0 +1,150 @@
+# Notification Service — API tests
+# Use with REST Client (VS Code / Cursor): click "Send Request" above each ###
+# Start server: npm run dev  (or bun dev)
+
+@baseUrl = http://localhost:4545
+@apiKey = your_api_key_here_must_be_32_chars_min
+@testEmail = arjun030401@gmail.com
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Health (no auth)
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name health
+GET {{baseUrl}}/health
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Notify — single email (202 Accepted)
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name notifySingle
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "channel": "email",
+  "to": "{{testEmail}}",
+  "subject": "Test — single notification",
+  "html": "<h1>Hello</h1><p>Sent from api.http</p>",
+  "priority": "normal"
+}
+
+### Notify — multiple recipients
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "channel": "email",
+  "to": ["{{testEmail}}"],
+  "subject": "Test — multiple recipients",
+  "html": "<p>Hi team</p>",
+  "priority": "high"
+}
+
+### Notify — with metadata
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "channel": "email",
+  "to": "{{testEmail}}",
+  "subject": "Test — with metadata",
+  "html": "<p>Order confirmation</p>",
+  "metadata": {
+    "orderId": "ORD-12345",
+    "source": "api.http"
+  }
+}
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Notify — batch (up to 1000)
+### ─────────────────────────────────────────────────────────────────────────────
+
+# @name notifyBatch
+POST {{baseUrl}}/notify/batch
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+[
+  {
+    "channel": "email",
+    "to": "{{testEmail}}",
+    "subject": "Batch A",
+    "html": "<p>Message A</p>"
+  },
+  {
+    "channel": "email",
+    "to": "{{testEmail}}",
+    "subject": "Batch B",
+    "html": "<p>Message B</p>"
+  }
+]
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Error cases (for manual verification)
+### ─────────────────────────────────────────────────────────────────────────────
+
+### 401 — missing API key
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+
+{
+  "channel": "email",
+  "to": "{{testEmail}}",
+  "subject": "Should fail",
+  "html": "<p>no key</p>"
+}
+
+### 401 — invalid API key
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: wrong-key
+
+{
+  "channel": "email",
+  "to": "{{testEmail}}",
+  "subject": "Should fail",
+  "html": "<p>bad key</p>"
+}
+
+### 400 — validation (invalid email)
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "channel": "email",
+  "to": "not-an-email",
+  "subject": "Should fail",
+  "html": "<p>bad email</p>"
+}
+
+### 400 — validation (missing subject)
+
+POST {{baseUrl}}/notify
+Content-Type: application/json
+x-api-key: {{apiKey}}
+
+{
+  "channel": "email",
+  "to": "{{testEmail}}",
+  "html": "<p>missing subject</p>"
+}
+
+### 404 — unknown route
+
+GET {{baseUrl}}/does-not-exist
+
+### ─────────────────────────────────────────────────────────────────────────────
+### Health after sending (check queue.completed / failed)
+### ─────────────────────────────────────────────────────────────────────────────
+
+GET {{baseUrl}}/health

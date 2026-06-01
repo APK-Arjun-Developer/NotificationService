@@ -13,16 +13,11 @@ function getTransporter(): Transporter {
   _transporter = nodemailer.createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,      // false for port 587 (STARTTLS), true for 465
+    secure: env.SMTP_SECURE, // false for port 587 (STARTTLS), true for 465
     auth: {
       user: env.SMTP_USER,
-      pass: env.SMTP_APP_PASSWORD, // Gmail App Password (16 chars)
+      pass: env.SMTP_APP_PASSWORD,
     },
-    pool: true,           // reuse connections — important for production
-    maxConnections: 5,    // max simultaneous SMTP connections
-    maxMessages: 100,     // messages per connection before recycling
-    rateDelta: 1000,      // 1 second window
-    rateLimit: 5,         // max 5 messages per second (Gmail limit)
     tls: {
       rejectUnauthorized: env.NODE_ENV === 'production',
     },
