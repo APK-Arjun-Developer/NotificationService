@@ -23,7 +23,12 @@ sudo chown $USER:$USER /var/www/notification-service
 
 ## GitHub repository secrets
 
-Go to **GitHub → your repo → Settings → Secrets and variables → Actions → New repository secret**.
+The workflow uses the **`production`** environment. Add secrets in **either** place (same names):
+
+1. **Settings → Secrets and variables → Actions → Repository secrets** (recommended), or  
+2. **Settings → Environments → production → Environment secrets**
+
+If you only add secrets at the repo level but the job still fails, duplicate the SSH secrets on the **production** environment.
 
 ### SSH (required)
 
@@ -31,9 +36,50 @@ Go to **GitHub → your repo → Settings → Secrets and variables → Actions 
 |--------|---------|-------------|
 | `SSH_HOST` | `203.0.113.10` | Server IP or hostname |
 | `SSH_USER` | `deploy` | SSH username |
-| `SSH_PRIVATE_KEY` | `-----BEGIN OPENSSH...` | Private key (full PEM) |
-| `SSH_PORT` | `22` | Optional; omit if using 22 |
+| `SSH_PRIVATE_KEY` | see below | **Full** private key (not the `.pub` file) |
+| `SSH_PORT` | `22` | Optional; default is 22 |
 | `DEPLOY_PATH` | `/var/www/notification-service` | Target folder on server |
+
+#### `SSH_PRIVATE_KEY` format
+
+Paste the **entire** private key file, including the header and footer lines:
+
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAAB...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Generate a deploy key pair on your PC:
+
+**PowerShell (Windows):**
+
+```powershell
+ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key -N '""'
+```
+
+**Linux / macOS / Git Bash:**
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key -N ""
+```
+
+Or run without `-N` and press **Enter** twice when asked for a passphrase (empty = no passphrase).
+
+- Add **`deploy_key.pub`** to the server: `~/.ssh/authorized_keys`  
+- Paste contents of **`deploy_key`** (no `.pub`) into GitHub secret **`SSH_PRIVATE_KEY`**
+
+View the private key in PowerShell: `Get-Content deploy_key`
+
+### Troubleshooting: `can't connect without a private SSH key`
+
+| Cause | Fix |
+|-------|-----|
+| Secret not created | Add `SSH_PRIVATE_KEY` (exact name, case-sensitive) |
+| Wrong name | Use `SSH_PRIVATE_KEY`, not `SSH_KEY` or `PRIVATE_KEY` |
+| Only on wrong level | Add to **Repository secrets** or **production** environment secrets |
+| Public key pasted | Use the **private** key file |
+| Key missing newlines | Re-paste the full PEM block |
 
 ### Application (required)
 
