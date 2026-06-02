@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: CI and Deploy
 
 on:
   push:
@@ -10,35 +10,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Build and deploy
+  ci:
+    name: Build
     runs-on: ubuntu-latest
-    environment: production
+    defaults:
+      run:
+        working-directory: notification-service
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate SSH secrets
-        shell: bash
-        run: |
-          missing=()
-          [ -z "${{ secrets.SSH_HOST }}" ] && missing+=("SSH_HOST")
-          [ -z "${{ secrets.SSH_USER }}" ] && missing+=("SSH_USER")
-          [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] && missing+=("SSH_PRIVATE_KEY")
-          [ -z "${{ secrets.DEPLOY_PATH }}" ] && missing+=("DEPLOY_PATH")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing required GitHub secrets: ${missing[*]}"
-            echo ""
-            echo "Add them in ONE of these places (names must match exactly):"
-            echo "  • Settings → Secrets and variables → Actions → Repository secrets"
-            echo "  • Settings → Environments → production → Environment secrets"
-            echo ""
-            echo "SSH_PRIVATE_KEY must be the full private key, including:"
-            echo "  -----BEGIN OPENSSH PRIVATE KEY-----"
-            echo "  (or -----BEGIN RSA PRIVATE KEY-----)"
-            exit 1
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,72 +29,29 @@ jobs:
           cache-dependency-path: notification-service/package-lock.json
 
       - name: Install dependencies
-        working-directory: notification-service
         run: npm ci
 
       - name: Typecheck
-        working-directory: notification-service
         run: npm run typecheck
 
       - name: Build
-        working-directory: notification-service
         run: npm run build
 
-      - name: Create .env.production from GitHub Secrets
-        working-directory: notification-service
-        run: |
-          cat > .env.production << EOF
-          PORT=${{ secrets.PORT }}
-          NODE_ENV=production
-          API_KEY=${{ secrets.API_KEY }}
-          SQLITE_PATH=${{ secrets.SQLITE_PATH }}
-          SMTP_HOST=${{ secrets.SMTP_HOST }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
-          SMTP_SECURE=${{ secrets.SMTP_SECURE }}
-          SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_APP_PASSWORD=${{ secrets.SMTP_APP_PASSWORD }}
-          EMAIL_FROM_NAME=${{ secrets.EMAIL_FROM_NAME }}
-          EMAIL_FROM_ADDRESS=${{ secrets.EMAIL_FROM_ADDRESS }}
-          EOF
+  deploy:
+    name: Deploy to Render
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
-      - name: Prepare deploy bundle
-        working-directory: notification-service
-        run: |
-          mkdir -p deploy-bundle
-          cp -r dist package.json package-lock.json ecosystem.config.cjs .env.production deploy-bundle/
-
-      - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add server to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Copy files to server
-        run: |
-          rsync -avz --delete \
-            -e "ssh -p ${{ secrets.SSH_PORT || 22 }}" \
-            notification-service/deploy-bundle/ \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
-
-      - name: Install and restart on server
+    steps:
+      - name: Trigger Render deploy
         env:
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          ssh -p "$SSH_PORT" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<EOF
-          set -e
-          cd "$DEPLOY_PATH"
-          mkdir -p data logs
-          npm ci --omit=dev
-          if pm2 describe notification-service > /dev/null 2>&1; then
-            pm2 restart ecosystem.config.cjs --env production --update-env
-          else
-            pm2 start ecosystem.config.cjs --env production
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOK_URL is not set."
+            echo "Render will still deploy if you connected this repo in the Render dashboard (Auto-Deploy on push)."
+            exit 0
           fi
-          pm2 save
-          echo "Deploy complete — \$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          EOF
+          curl -fsS -X POST "$DEPLOY_HOOK"
+          echo "Render deploy triggered."

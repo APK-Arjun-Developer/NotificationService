@@ -1,132 +1,120 @@
-# Production deployment (GitHub Actions)
+# Production deployment (no VPS required)
 
-Pushing to **`main`** runs [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml): typecheck, build, then deploy over SSH with PM2.
+You do **not** need a VPS. Use **[Render](https://render.com)** (free tier): connect GitHub, set environment variables, and it runs your app on a public URL.
 
-## Server prerequisites
+Pushing to **`main`** runs [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) to **build and typecheck**. Render **hosts and runs** the app.
 
-Your VPS (or VM) needs:
+---
 
-- **Node.js 20+**
-- **npm**
-- **PM2**: `npm install -g pm2`
-- SSH access for the deploy user
-- An empty deploy directory (e.g. `/var/www/notification-service`)
+## One-time setup on Render (≈10 minutes)
 
-```bash
-# Example one-time server setup (Ubuntu)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo npm install -g pm2
-sudo mkdir -p /var/www/notification-service
-sudo chown $USER:$USER /var/www/notification-service
-```
+### 1. Create a Render account
 
-## GitHub repository secrets
+Sign up at [render.com](https://render.com) (GitHub login is fine).
 
-The workflow uses the **`production`** environment. Add secrets in **either** place (same names):
+### 2. Create a Web Service from your repo
 
-1. **Settings → Secrets and variables → Actions → Repository secrets** (recommended), or  
-2. **Settings → Environments → production → Environment secrets**
+1. **Dashboard → New + → Web Service**
+2. Connect **GitHub** and select **`NotificationService`**
+3. Use these settings:
 
-If you only add secrets at the repo level but the job still fails, duplicate the SSH secrets on the **production** environment.
+| Setting | Value |
+|---------|--------|
+| **Root Directory** | `notification-service` |
+| **Runtime** | Node |
+| **Build Command** | `npm ci && npm run build` |
+| **Start Command** | `npm start` |
+| **Instance type** | Free |
 
-### SSH (required)
+4. **Branch:** `main`  
+5. Turn **Auto-Deploy** ON (deploys on every push to `main`)
 
-| Secret | Example | Description |
-|--------|---------|-------------|
-| `SSH_HOST` | `203.0.113.10` | Server IP or hostname |
-| `SSH_USER` | `deploy` | SSH username |
-| `SSH_PRIVATE_KEY` | see below | **Full** private key (not the `.pub` file) |
-| `SSH_PORT` | `22` | Optional; default is 22 |
-| `DEPLOY_PATH` | `/var/www/notification-service` | Target folder on server |
+### 3. Add environment variables
 
-#### `SSH_PRIVATE_KEY` format
+In the service → **Environment**, add:
 
-Paste the **entire** private key file, including the header and footer lines:
-
-```
------BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAAB...
------END OPENSSH PRIVATE KEY-----
-```
-
-Generate a deploy key pair on your PC:
-
-**PowerShell (Windows):**
-
-```powershell
-ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key -N '""'
-```
-
-**Linux / macOS / Git Bash:**
-
-```bash
-ssh-keygen -t ed25519 -C "github-deploy" -f deploy_key -N ""
-```
-
-Or run without `-N` and press **Enter** twice when asked for a passphrase (empty = no passphrase).
-
-- Add **`deploy_key.pub`** to the server: `~/.ssh/authorized_keys`  
-- Paste contents of **`deploy_key`** (no `.pub`) into GitHub secret **`SSH_PRIVATE_KEY`**
-
-View the private key in PowerShell: `Get-Content deploy_key`
-
-### Troubleshooting: `can't connect without a private SSH key`
-
-| Cause | Fix |
-|-------|-----|
-| Secret not created | Add `SSH_PRIVATE_KEY` (exact name, case-sensitive) |
-| Wrong name | Use `SSH_PRIVATE_KEY`, not `SSH_KEY` or `PRIVATE_KEY` |
-| Only on wrong level | Add to **Repository secrets** or **production** environment secrets |
-| Public key pasted | Use the **private** key file |
-| Key missing newlines | Re-paste the full PEM block |
-
-### Application (required)
-
-| Secret | Example |
-|--------|---------|
-| `PORT` | `3001` |
-| `API_KEY` | 32+ char random string |
+| Key | Example / notes |
+|-----|------------------|
+| `NODE_ENV` | `production` |
+| `PORT` | `10000` (Render often sets this automatically; match their docs) |
+| `API_KEY` | 32+ character random string |
 | `SQLITE_PATH` | `./data/notifications.db` |
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `587` |
 | `SMTP_SECURE` | `false` |
-| `SMTP_USER` | `you@gmail.com` |
+| `SMTP_USER` | your Gmail |
 | `SMTP_APP_PASSWORD` | Gmail app password |
 | `EMAIL_FROM_NAME` | `Notification Service` |
-| `EMAIL_FROM_ADDRESS` | `you@gmail.com` |
+| `EMAIL_FROM_ADDRESS` | your Gmail |
 
-## GitHub environment (optional)
+Mark sensitive values as **Secret** in Render.
 
-The workflow uses the **`production`** environment. Create it under **Settings → Environments** if you want protection rules or environment-specific secrets.
+### 4. Deploy
+
+Click **Create Web Service** (or **Manual Deploy**). When the build finishes, open the URL Render gives you, e.g. `https://notification-service-xxxx.onrender.com`.
+
+### 5. Test
+
+```text
+GET https://YOUR-SERVICE.onrender.com/health
+```
+
+Use `api.http` with your Render URL and `x-api-key`.
+
+---
+
+## Optional: GitHub Actions deploy hook
+
+Render can auto-deploy from GitHub without this. To also trigger deploy from Actions after CI passes:
+
+1. Render → your service → **Settings → Deploy Hook**
+2. Copy the hook URL
+3. GitHub → **Settings → Secrets → Actions** → add `RENDER_DEPLOY_HOOK_URL`
+
+---
+
+## What you can ignore (no VPS)
+
+- SSH keys (`deploy_key`, `SSH_PRIVATE_KEY`, etc.)
+- PM2 / `ecosystem.config.cjs` (only for self-hosted servers)
+- `mkdir ~/.ssh` on a Linux server
+
+---
+
+## SQLite on free hosting
+
+On Render’s **free** plan, the filesystem is **ephemeral**: audit logs in SQLite may **reset** when the service redeploys or restarts. For production audit history long-term, later consider Render Disk (paid) or an external database.
+
+---
 
 ## Deploy flow
 
 ```mermaid
 flowchart LR
-  A[Push to main] --> B[Typecheck + build]
-  B --> C[Write .env.production from secrets]
-  C --> D[SCP to server]
-  D --> E[npm ci + pm2 restart]
+  A[Push to main] --> B[GitHub Actions: build]
+  A --> C[Render: auto-deploy]
+  B --> D[Optional: deploy hook]
+  C --> E[Live URL]
 ```
 
-## Manual deploy trigger
+---
 
-**Actions → Deploy to Production → Run workflow**
+## Local production test (Windows)
 
-## Verify after deploy
-
-```bash
-curl http://YOUR_SERVER_IP:3001/health
-```
-
-## Local production test
-
-```bash
+```powershell
 cd notification-service
-cp .env.production .env.production.local   # fill real values locally only
-NODE_ENV=production npm run build
-NODE_ENV=production npm start
+# fill .env locally — do not commit
+npm run build
+$env:NODE_ENV="production"
+npm start
 ```
 
-Do not commit filled production secrets.
+---
+
+## Other hosts (alternatives)
+
+| Platform | Notes |
+|----------|--------|
+| [Railway](https://railway.app) | Similar: connect GitHub, set env vars |
+| [Fly.io](https://fly.io) | CLI deploy, small free allowance |
+| VPS | Only if you want a server; use SSH + PM2 (old approach) |

@@ -137,12 +137,11 @@ public class NotificationClient(HttpClient http)
 
 ---
 
-## Production deploy (GitHub Actions)
+## Production deploy (no VPS)
 
-Pushes to **`main`** auto-deploy via SSH + PM2.
+Use **[Render](https://render.com)** (free tier): connect this GitHub repo, set env vars, get a public URL.
 
-1. Configure [GitHub Actions secrets](docs/DEPLOY.md) (SSH + SMTP + `API_KEY`, etc.)
-2. Prepare your server (Node 20, PM2)
-3. Push to `main` — or run **Actions → Deploy to Production → Run workflow**
+1. Follow **[docs/DEPLOY.md](docs/DEPLOY.md)** (Render setup, ~10 min)
+2. Push to **`main`** — Render auto-deploys; GitHub Actions runs build checks
 
-See **[docs/DEPLOY.md](docs/DEPLOY.md)** for the full secret list and server setup.
+No SSH keys or VPS required.

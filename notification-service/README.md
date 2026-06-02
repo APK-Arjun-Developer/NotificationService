@@ -137,6 +137,6 @@ public class NotificationClient(HttpClient http)
 
 ---
 
-## Production deploy (GitHub Actions)
+## Production deploy (no VPS)
 
-Pushes to **`main`** auto-deploy via SSH + PM2. See **[../docs/DEPLOY.md](../docs/DEPLOY.md)** for secrets and server setup.
+Host on **[Render](https://render.com)** — see **[../docs/DEPLOY.md](../docs/DEPLOY.md)**.
