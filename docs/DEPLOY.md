@@ -1,6 +1,6 @@
 # Production deployment (GitHub Actions)
 
-Pushing to **`main`** runs [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml): build, test, then deploy over SSH with PM2.
+Pushing to **`main`** runs [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml): typecheck, build, then deploy over SSH with PM2.
 
 ## Server prerequisites
 
@@ -58,7 +58,7 @@ The workflow uses the **`production`** environment. Create it under **Settings â
 
 ```mermaid
 flowchart LR
-  A[Push to main] --> B[Build + test]
+  A[Push to main] --> B[Typecheck + build]
   B --> C[Write .env.production from secrets]
   C --> D[SCP to server]
   D --> E[npm ci + pm2 restart]

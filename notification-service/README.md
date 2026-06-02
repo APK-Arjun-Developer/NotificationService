@@ -132,7 +132,6 @@ public class NotificationClient(HttpClient http)
 | `npm run dev` | Dev server with hot reload |
 | `npm run build` | Compile TypeScript → `dist/` |
 | `npm start` | Run compiled production build |
-| `npm test` | Run Jest tests |
 | `npm run lint` | ESLint check |
 | `npm run typecheck` | Type-check without emitting |
 
